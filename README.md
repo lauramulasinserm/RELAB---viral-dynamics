@@ -112,6 +112,5 @@ Citation details will be updated upon publication.
 **Laura Mulas**
 
 Université Paris Cité / Inserm  
-IAME – Infection, Antimicrobials, Modelling, Evolution  
 
 For questions regarding the code or analyses, please contact the corresponding repository author.
