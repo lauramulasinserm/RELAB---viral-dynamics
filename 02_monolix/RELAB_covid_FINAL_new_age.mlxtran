@@ -1,0 +1,128 @@
+<DATAFILE>
+
+[FILEINFO]
+file='../data_monolix/data_for_monolix_covid_24_26_vfinal.csv'
+delimiter = comma
+header={ID_infection, time, obs, censor, Ct_diff, tag_inf, sexe, age_cat, season, epidemic_period, statut_vaccin, tSS}
+
+[CONTENT]
+ID_infection = {use=identifier}
+time = {use=time}
+censor = {use=censored}
+Ct_diff = {use=observation, type=continuous}
+sexe = {use=covariate, type=categorical}
+age_cat = {use=covariate, type=categorical}
+season = {use=covariate, type=categorical}
+epidemic_period = {use=covariate, type=categorical}
+statut_vaccin = {use=covariate, type=categorical}
+
+[SETTINGS]
+dataType = {'Ct_diff'=plasma}
+
+<MODEL>
+
+[COVARIATE]
+input = {age_cat, epidemic_period, season, sexe, statut_vaccin}
+
+age_cat = {type=categorical, categories={'18-65', '5-18', '<5', '>65'}}
+epidemic_period = {type=categorical, categories={'Phase 1', 'Phase 2', 'Phase 3'}}
+season = {type=categorical, categories={'24_25', '25_26'}}
+sexe = {type=categorical, categories={'Female', 'Male'}}
+statut_vaccin = {type=categorical, categories={'0', '1'}}
+
+DEFINITION:
+age_cat_fus =
+{
+  transform = age_cat, 
+  categories = {
+  'G_5-18_<5' = {'5-18', '<5'},
+  'G_18-65' = {'18-65'},
+  'G_>65' = {'>65'}  }, 
+  reference = 'G_18-65'
+}
+
+epidemic_period_ref =
+{
+  transform = epidemic_period, 
+  categories = {
+  'G_Phase 1' = {'Phase 1'},
+  'G_Phase 2' = {'Phase 2'},
+  'G_Phase 3' = {'Phase 3'}  }, 
+  reference = 'G_Phase 2'
+}
+
+period_fus =
+{
+  transform = epidemic_period, 
+  categories = {
+  'G_Phase 1_Phase 2' = {'Phase 1', 'Phase 2'},
+  'G_Phase 3' = {'Phase 3'}  }, 
+  reference = 'G_Phase 1_Phase 2'
+}
+
+[INDIVIDUAL]
+input = {beta_pop, c_pop, delta_pop, eta_pop, p_pop, tinc_pop, omega_beta, omega_delta, age_cat, beta_delta_age_cat_5_18, beta_delta_age_cat__5, beta_delta_age_cat__65, beta_beta_age_cat_5_18, beta_beta_age_cat__5, beta_beta_age_cat__65, period_fus, beta_delta_period_fus_G_Phase_3, season, beta_beta_season_25_26, beta_delta_season_25_26}
+
+age_cat = {type=categorical, categories={'18-65', '5-18', '<5', '>65'}}
+period_fus = {type=categorical, categories={'G_Phase 1_Phase 2', 'G_Phase 3'}}
+season = {type=categorical, categories={'24_25', '25_26'}}
+
+DEFINITION:
+beta = {distribution=logNormal, typical=beta_pop, covariate={age_cat, season}, coefficient={{0, beta_beta_age_cat_5_18, beta_beta_age_cat__5, beta_beta_age_cat__65}, {0, beta_beta_season_25_26}}, sd=omega_beta}
+c = {distribution=logNormal, typical=c_pop, no-variability}
+delta = {distribution=logNormal, typical=delta_pop, covariate={age_cat, period_fus, season}, coefficient={{0, beta_delta_age_cat_5_18, beta_delta_age_cat__5, beta_delta_age_cat__65}, {0, beta_delta_period_fus_G_Phase_3}, {0, beta_delta_season_25_26}}, sd=omega_delta}
+eta = {distribution=logNormal, typical=eta_pop, no-variability}
+p = {distribution=logNormal, typical=p_pop, no-variability}
+tinc = {distribution=logNormal, typical=tinc_pop, no-variability}
+
+[LONGITUDINAL]
+input = {a}
+
+file = '../structural_model/modele_TV_covid_Ct_diff_maxime.txt'
+
+DEFINITION:
+Ct_diff_ = {distribution=normal, prediction=Ct_diff, errorModel=constant(a)}
+
+<FIT>
+data = 'Ct_diff'
+model = Ct_diff_
+
+<PARAMETER>
+a = {value=3.3736271, method=MLE}
+beta_beta_age_cat_5_18 = {value=0.09164253, method=MLE}
+beta_beta_age_cat__5 = {value=0.1827615, method=MLE}
+beta_beta_age_cat__65 = {value=-0.09632354, method=MLE}
+beta_beta_season_25_26 = {value=-0.03892582, method=MLE}
+beta_delta_age_cat_5_18 = {value=0.2220694, method=MLE}
+beta_delta_age_cat__5 = {value=0.3635387, method=MLE}
+beta_delta_age_cat__65 = {value=-0.1817937, method=MLE}
+beta_delta_period_fus_G_Phase_3 = {value=0.0944742, method=MLE}
+beta_delta_season_25_26 = {value=0, method=MLE}
+beta_pop = {value=0.000000008224909, method=MLE}
+c_pop = {value=10, method=FIXED}
+delta_pop = {value=1.8846148, method=MLE}
+eta_pop = {value=0.0001, method=FIXED}
+omega_beta = {value=0.2891675, method=MLE}
+omega_delta = {value=0.2393367, method=MLE}
+p_pop = {value=754110.5600000001, method=MLE}
+tinc_pop = {value=5, method=FIXED}
+
+<MONOLIX>
+
+[TASKS]
+populationParameters()
+individualParameters(method = {conditionalMean, conditionalMode })
+fim(method = StochasticApproximation)
+logLikelihood(method = ImportanceSampling)
+plotResult(method = {indfits, parameterdistribution, covariancemodeldiagnosis, covariatemodeldiagnosis, obspred, vpc, residualsscatter, residualsdistribution, randomeffects, saemresults })
+
+[SETTINGS]
+GLOBAL:
+exportpath = 'RELAB_covid_FINAL_new_age'
+nbchains = 4
+autochains = no
+
+POPULATION:
+exploratoryiterations = 1000
+simulatedannealingiterations = 1000
+
