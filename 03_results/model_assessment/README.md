@@ -7,4 +7,4 @@ Simulations include inter-individual variability and residual error and are comp
 ## Scripts
 
 - `simulate_COVID_with_residual_error.R`: simulation of Ct trajectories including residual error
-- `RELAB_simu_Ct_distrib.R`: comparison of observed and simulated Ct distributions for SARS-CoV-2, IAV, IBV, and RSV
+- `ct_distribution_simulation.R`: comparison of observed and simulated Ct distributions for SARS-CoV-2, IAV, IBV, and RSV
