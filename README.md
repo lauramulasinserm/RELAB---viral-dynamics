@@ -23,75 +23,49 @@ The repository contains the code used for data preparation, Monolix model fittin
 ```text
 RELAB---viral-dynamics/
 │
-├── 01_data_processing/
+├── 01_data_management/
+│   ├── 01_data_cleaning.R
+│   ├── 02_EEQ_normalization.R
+│   ├── 03_data_preparation_for_monolix.R
+│   ├── 04_characteristics_table.R
+│   └── README.md
 │
 ├── 02_monolix/
-│   ├── COVID/
-│   ├── IAV/
-│   ├── IBV/
-│   └── RSV/
+│   ├── model_monolix_COVID.mlxtran
+│   ├── model_monolix_IAV.mlxtran
+│   ├── model_monolix_IBV.mlxtran
+│   ├── model_monolix_RSV.mlxtran
+│   ├── modele_TV_COVID.txt
+│   ├── modele_TV_IAV.txt
+│   ├── modele_TV_IBV.txt
+│   ├── modele_TV_RSV.txt
+│   └── README.md
 │
-├── 03_results_analysis/
+├── 03_results/
+│   ├── analyses/
+│   │   ├── covariate_effects/
+│   │   ├── vaccine_effectiveness/
+│   │   └── virus_comparisons/
 │   │
-│   ├── 01_simulate_COVID_trajectories.R
-│   ├── 02_simulate_IAV_trajectories.R
-│   ├── 03_simulate_IBV_trajectories.R
-│   ├── 04_simulate_RSV_trajectories.R
+│   ├── model_assessment/
+│   │   ├── simulate_COVID_with_residual_error.R
+│   │   ├── simulate_IAV_with_residual_error.R
+│   │   ├── simulate_IBV_with_residual_error.R
+│   │   ├── simulate_RSV_with_residual_error.R
+│   │   └── README.md
 │   │
-│   ├── model_outputs/
-│   │   ├── COVID/
-│   │   ├── IAV/
-│   │   ├── IBV/
-│   │   └── RSV/
+│   ├── simulations/
+│   │   ├── simulate_COVID_trajectories.R
+│   │   ├── simulate_IAV_trajectories.R
+│   │   ├── simulate_IBV_trajectories.R
+│   │   ├── simulate_RSV_trajectories.R
+│   │   └── README.md
 │   │
-│   └── results/
-│       └── simulations/
-│           ├── COVID/
-│           ├── IAV/
-│           ├── IBV/
-│           └── RSV/
+│   └── README.md
 │
+├── .gitignore
 └── README.md
 ```
-
-
-## Directory description
-
-### `01_data_processing/`
-
-Scripts used to prepare and format the RELAB data for the viral kinetic analyses.
-
-Individual-level RELAB data are not included in the repository.
-
-
-### `02_monolix/`
-
-Monolix model files used to estimate the population parameters of the within-host viral dynamics models.
-
-Models are organized separately for:
-
-- SARS-CoV-2 (`COVID`)
-- Influenza A virus (`IAV`)
-- Influenza B virus (`IBV`)
-- Respiratory syncytial virus (`RSV`)
-
-
-### `03_results_analysis/`
-
-R scripts used to simulate viral trajectories from the estimated Monolix model parameters and derive the results presented in the manuscript.
-
-The main trajectory simulation scripts are organized by virus:
-
-- `01_simulate_COVID_trajectories.R`
-- `02_simulate_IAV_trajectories.R`
-- `03_simulate_IBV_trajectories.R`
-- `04_simulate_RSV_trajectories.R`
-
-The `model_outputs/` directory contains selected Monolix outputs required for downstream analyses and simulations.
-
-The `results/simulations/` directory is used to store simulation outputs and is organized separately for each virus.
-
-Large simulation files are not tracked in the public repository.
 
 
 ## Data availability
