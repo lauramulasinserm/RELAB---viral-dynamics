@@ -15,7 +15,7 @@ This study uses community-based RT-PCR data from the French RELAB network to cha
 
 Within-host viral kinetics were characterized using a mechanistic target-cell-limited model fitted to routine cycle threshold (Ct) data.
 
-The repository contains the code used for data preparation, Monolix model fitting, simulation of viral trajectories, analysis of viral kinetic characteristics, and generation of the manuscript figures and tables.
+The repository contains the code used for data preparation, Monolix model fitting, simulation of viral trajectories, and analysis of viral kinetic characteristics.
 
 
 ## Repository structure
