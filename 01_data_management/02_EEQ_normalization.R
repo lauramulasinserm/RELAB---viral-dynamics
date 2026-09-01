@@ -24,7 +24,7 @@ library(readr)
 # ---------------------------------------------------------------------------
 
 relab_file <- "data/processed/RELAB_24_25_clean_start.csv"
-eeq_file   <- "data/raw/EEQ_2025_negatif.csv"
+eeq_file   <- "data/raw/EEQ_2025.csv"
 cerba_file <- "data/raw/cartographie_technique_relab_v3.csv"
 
 rules_output <- "data/processed/EEQ_Ct_normalization_rules.csv"
