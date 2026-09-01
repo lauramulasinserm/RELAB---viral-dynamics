@@ -1,0 +1,28 @@
+DESCRIPTION:
+
+[LONGITUDINAL]
+input={beta, c, p, eta, delta, tinc}
+
+EQUATION:
+t_0 = -tinc
+
+T_0 = 8e7
+VI_0 = eta*p/c
+VNI_0 = 0
+
+odeType = stiff
+
+ddt_T = - beta*VI*T
+ddt_VI = eta*(p/c)*beta*VI*T - delta*VI
+ddt_VNI = (1-eta)*(p/c)*beta*VI*T - delta*VNI
+
+V = VI + VNI
+
+V_log = log10(max(V/30, 1e-2))
+
+Ct = 49-3*V_log
+
+Ct_diff = 50 - Ct
+
+OUTPUT:
+output = {Ct_diff}
