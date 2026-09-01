@@ -1,13 +1,6 @@
 # Monolix modelling
 
-This directory contains the Monolix model files used to characterize within-host viral dynamics of the four respiratory viruses included in the RELAB study:
-
-- SARS-CoV-2
-- Influenza A virus (IAV)
-- Influenza B virus (IBV)
-- Respiratory syncytial virus (RSV)
-
-Individual-level RELAB data are not publicly available and are therefore not included in this repository.
+This directory contains the Monolix model files used to characterize within-host viral dynamics of the four respiratory viruses included in the RELAB study.
 
 ## Model structure
 
@@ -46,8 +39,6 @@ The Fisher Information Matrix and log-likelihood were computed using linearizati
 ## Data
 
 The input datasets required by the `.mlxtran` files are generated from the RELAB data-management workflow available in the `01_data_management` directory.
-
-Because the RELAB dataset contains individual-level clinical and virological information, these input datasets are not distributed in this public repository.
 
 ## Software
 
