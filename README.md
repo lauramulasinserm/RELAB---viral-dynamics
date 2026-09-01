@@ -93,7 +93,6 @@ The analysis workflow broadly consists of:
 2. Estimation of within-host viral kinetic parameters using Monolix.
 3. Simulation of viral trajectories using the estimated population parameters.
 4. Calculation of viral kinetic characteristics and covariate effects.
-5. Generation of manuscript figures and tables.
 
 Individual-level RELAB data and large simulation files are not included in the repository.
 
