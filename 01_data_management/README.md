@@ -71,13 +71,3 @@ The table includes:
 - presence of a negative follow-up test.
 
 It also generates vaccination coverage summaries by virus and epidemic season.
-
-## Data availability
-
-Individual-level RELAB data are not publicly available because they contain potentially sensitive clinical and virological information.
-
-The code provided here documents the complete data-processing workflow used in the study.
-
-## Software
-
-Data management and descriptive analyses were performed in R.
