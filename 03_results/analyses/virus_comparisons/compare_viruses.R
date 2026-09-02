@@ -1,32 +1,36 @@
-################################################################################################
-# Comparison of time to viral peak across respiratory viruses
-# Author: Laura MULAS
-# Purpose:
-#   Estimate and compare the time from first viral detection (Ct < 40)
-#   to peak viral load across SARS-CoV-2, IAV, IBV, and RSV.
+################################################################################
+# Compare viral kinetic times across respiratory viruses
 #
-#   Uncertainty is propagated from the Monte Carlo trajectory simulations.
-################################################################################################
+# Estimates and compares:
+#   - time from first detection to viral peak
+#   - time from viral peak to viral clearance
+#   - total detectable shedding duration
+#
+# Uncertainty is propagated across Monte Carlo simulation draws.
+# Kinetic outcomes are computed within each draw before summarising across draws.
+################################################################################
 
 rm(list = ls())
 
-# ---------------------------------------------------------------------------
-# 0. Libraries
-# ---------------------------------------------------------------------------
+
+# ==============================================================================
+# 1. Packages
+# ==============================================================================
 
 library(dplyr)
 library(ggplot2)
+library(purrr)
+library(tidyr)
 
 
-# ---------------------------------------------------------------------------
-# 1. Settings
-# ---------------------------------------------------------------------------
+# ==============================================================================
+# 2. Settings
+# ==============================================================================
 
 Ct_LOD <- 40
 
-simulation_dir <- "03_results_analysis/results/simulations"
-
-output_dir <- "03_results_analysis/results/time_to_peak"
+simulation_dir <- "/home/laura.mulas/Monolix/SH/results"
+output_dir <- "/home/laura.mulas/Monolix/SH/results"
 
 dir.create(
   output_dir,
@@ -34,72 +38,69 @@ dir.create(
   showWarnings = FALSE
 )
 
+virus_levels <- c(
+  "SARS-CoV-2",
+  "IAV",
+  "IBV",
+  "RSV"
+)
 
-# ---------------------------------------------------------------------------
-# 2. Simulation files
-# ---------------------------------------------------------------------------
+
+# ==============================================================================
+# 3. Simulation files
+# ==============================================================================
 
 simulation_files <- list(
-
   "SARS-CoV-2" = file.path(
     simulation_dir,
-    "COVID",
     paste0(
-      "COVID_trajectories_",
+      "simulation_TV_covid_",
       c("1_250", "251_500", "501_750", "751_1000"),
-      ".rds"
+      "_IC_traj_vfinal.rds"
     )
   ),
 
   "IAV" = file.path(
     simulation_dir,
-    "IAV",
     paste0(
-      "IAV_trajectories_",
+      "simulation_TV_flu_A_",
       c("1_250", "251_500", "501_750", "751_1000"),
-      ".rds"
+      "_IC_traj_vfinal.rds"
     )
   ),
 
   "IBV" = file.path(
     simulation_dir,
-    "IBV",
-    paste0(
-      "IBV_trajectories_",
-      c("1_250", "251_500", "501_750", "751_1000"),
-      ".rds"
-    )
+    "simulation_TV_flu_B_1000_traj_IC_vfinal.rds"
   ),
 
   "RSV" = file.path(
     simulation_dir,
-    "RSV",
-    paste0(
-      "RSV_trajectories_",
-      c("1_250", "251_500", "501_750", "751_1000"),
-      ".rds"
-    )
+    "simulation_TV_VRS_1000_IC_traj_vfinal.rds"
   )
 )
 
 
-# ---------------------------------------------------------------------------
-# 3. Helper functions
-# ---------------------------------------------------------------------------
+# ==============================================================================
+# 4. Helper functions
+# ==============================================================================
 
-# Linear interpolation of the time at which Ct crosses the detection threshold.
+# ------------------------------------------------------------------------------
+# 4.1 Linear interpolation of a Ct threshold crossing
+# ------------------------------------------------------------------------------
+
 interpolate_crossing <- function(
     t1,
     t2,
     ct1,
     ct2,
-    threshold = 40) {
+    threshold = Ct_LOD) {
 
   if (
     !is.finite(t1) ||
-    !is.finite(t2) ||
-    !is.finite(ct1) ||
-    !is.finite(ct2)
+      !is.finite(t2) ||
+      !is.finite(ct1) ||
+      !is.finite(ct2)
   ) {
     return(NA_real_)
   }
@@ -115,124 +116,153 @@ interpolate_crossing <- function(
 }
 
 
-# Extract detection-to-peak time from one simulated trajectory.
-extract_time_to_peak <- function(
+# ------------------------------------------------------------------------------
+# 4.2 Extract kinetic times from one simulated trajectory
+# ------------------------------------------------------------------------------
+
+extract_kinetic_times <- function(
     df_trajectory,
-    threshold = 40) {
+    threshold = Ct_LOD) {
 
   df_trajectory <- df_trajectory %>%
-    select(
-      time_since_symptoms_onset,
-      Ct_value
+    transmute(
+      time = time_since_symptoms_onset,
+      Ct = Ct_value
     ) %>%
     filter(
-      is.finite(time_since_symptoms_onset),
-      is.finite(Ct_value)
+      is.finite(time),
+      is.finite(Ct)
     ) %>%
-    arrange(
-      time_since_symptoms_onset
+    arrange(time)
+
+  if (nrow(df_trajectory) < 3) {
+    return(
+      tibble(
+        t_detection = NA_real_,
+        t_peak = NA_real_,
+        t_clearance = NA_real_,
+        detection_to_peak = NA_real_,
+        peak_to_clearance = NA_real_,
+        detectable_duration = NA_real_
+      )
     )
-
-  if (nrow(df_trajectory) < 2) {
-    return(NA_real_)
   }
 
+  # Peak viral load corresponds to the minimum Ct.
+  idx_peak <- which.min(df_trajectory$Ct)[1]
+  t_peak <- df_trajectory$time[idx_peak]
 
-  # Viral peak corresponds to the minimum Ct.
-  idx_peak <- which.min(
-    df_trajectory$Ct_value
-  )
-
-  peak_time <- df_trajectory$
-    time_since_symptoms_onset[idx_peak]
-
-
-  # Restrict to the ascending phase before the viral peak.
-  df_before_peak <- df_trajectory[
-    seq_len(idx_peak),
-  ]
-
-
-  if (nrow(df_before_peak) < 2) {
-    return(NA_real_)
+  # First detection before peak: Ct >= threshold -> Ct < threshold.
+  if (idx_peak > 1) {
+    idx_detection <- which(
+      head(df_trajectory$Ct[seq_len(idx_peak)], -1) >= threshold &
+        tail(df_trajectory$Ct[seq_len(idx_peak)], -1) < threshold
+    )
+  } else {
+    idx_detection <- integer(0)
   }
 
+  if (length(idx_detection) > 0) {
+    i_det <- tail(idx_detection, 1)
 
-  # Identify threshold crossing from undetectable to detectable:
-  # Ct >= 40 -> Ct < 40.
-  idx_detection <- which(
-    head(
-      df_before_peak$Ct_value,
-      -1
-    ) >= threshold &
-      tail(
-        df_before_peak$Ct_value,
-        -1
-      ) < threshold
-  )
-
-
-  if (length(idx_detection) == 0) {
-    return(NA_real_)
+    t_detection <- interpolate_crossing(
+      t1 = df_trajectory$time[i_det],
+      t2 = df_trajectory$time[i_det + 1],
+      ct1 = df_trajectory$Ct[i_det],
+      ct2 = df_trajectory$Ct[i_det + 1],
+      threshold = threshold
+    )
+  } else {
+    t_detection <- NA_real_
   }
 
+  # Viral clearance after peak: Ct < threshold -> Ct >= threshold.
+  if (idx_peak < nrow(df_trajectory)) {
+    post_peak_index <- idx_peak:nrow(df_trajectory)
 
-  # Use the last crossing before the peak.
-  i <- tail(
-    idx_detection,
-    1
-  )
-
-  detection_time <- interpolate_crossing(
-    t1 = df_before_peak$
-      time_since_symptoms_onset[i],
-
-    t2 = df_before_peak$
-      time_since_symptoms_onset[i + 1],
-
-    ct1 = df_before_peak$
-      Ct_value[i],
-
-    ct2 = df_before_peak$
-      Ct_value[i + 1],
-
-    threshold = threshold
-  )
-
-
-  if (
-    !is.finite(detection_time) ||
-    !is.finite(peak_time)
-  ) {
-    return(NA_real_)
+    idx_clearance_local <- which(
+      head(df_trajectory$Ct[post_peak_index], -1) < threshold &
+        tail(df_trajectory$Ct[post_peak_index], -1) >= threshold
+    )
+  } else {
+    idx_clearance_local <- integer(0)
   }
 
+  if (length(idx_clearance_local) > 0) {
+    i_clear <- idx_peak + idx_clearance_local[1] - 1
 
-  peak_time - detection_time
+    t_clearance <- interpolate_crossing(
+      t1 = df_trajectory$time[i_clear],
+      t2 = df_trajectory$time[i_clear + 1],
+      ct1 = df_trajectory$Ct[i_clear],
+      ct2 = df_trajectory$Ct[i_clear + 1],
+      threshold = threshold
+    )
+  } else {
+    t_clearance <- NA_real_
+  }
+
+  tibble(
+    t_detection = t_detection,
+    t_peak = t_peak,
+    t_clearance = t_clearance,
+    detection_to_peak = ifelse(
+      is.finite(t_detection),
+      t_peak - t_detection,
+      NA_real_
+    ),
+    peak_to_clearance = ifelse(
+      is.finite(t_clearance),
+      t_clearance - t_peak,
+      NA_real_
+    ),
+    detectable_duration = ifelse(
+      is.finite(t_detection) & is.finite(t_clearance),
+      t_clearance - t_detection,
+      NA_real_
+    )
+  )
 }
 
 
-# Reduce a large trajectory file immediately to:
-# simulation draw x time x median Ct.
+# ------------------------------------------------------------------------------
+# 4.3 Reduce one simulation file
+# ------------------------------------------------------------------------------
+
 reduce_simulation_file <- function(file) {
 
-  message(
-    "Reading: ",
-    basename(file)
-  )
+  message("Reading: ", basename(file))
 
   df <- readRDS(file)
 
+  required_columns <- c(
+    "sim",
+    "time_since_symptoms_onset",
+    "Ct"
+  )
+
+  missing_columns <- setdiff(
+    required_columns,
+    names(df)
+  )
+
+  if (length(missing_columns) > 0) {
+    stop(
+      "Missing column(s) in ",
+      basename(file),
+      ": ",
+      paste(missing_columns, collapse = ", ")
+    )
+  }
+
+  # Population-median Ct at each time point within each Monte Carlo draw.
   df_small <- df %>%
     group_by(
       sim,
       time_since_symptoms_onset
     ) %>%
     summarise(
-      Ct_value = median(
-        Ct,
-        na.rm = TRUE
-      ),
+      Ct_value = median(Ct, na.rm = TRUE),
       .groups = "drop"
     )
 
@@ -243,19 +273,17 @@ reduce_simulation_file <- function(file) {
 }
 
 
-# Process all trajectory files from one virus.
-calculate_time_to_peak_virus <- function(
+# ------------------------------------------------------------------------------
+# 4.4 Process one virus
+# ------------------------------------------------------------------------------
+
+calculate_kinetics_virus <- function(
     files,
     virus_name,
-    threshold = 40) {
+    threshold = Ct_LOD) {
 
-  message(
-    "\nProcessing ",
-    virus_name
-  )
+  message("\nProcessing ", virus_name)
 
-
-  # Read and reduce each large file sequentially.
   reduced_list <- vector(
     "list",
     length(files)
@@ -270,48 +298,29 @@ calculate_time_to_peak_virus <- function(
       )
     }
 
-    reduced_list[[i]] <-
-      reduce_simulation_file(
-        files[i]
-      )
+    reduced_list[[i]] <- reduce_simulation_file(
+      files[i]
+    )
   }
 
-
-  df_reduced <- bind_rows(
-    reduced_list
-  )
+  df_reduced <- bind_rows(reduced_list)
 
   rm(reduced_list)
   gc()
 
-
-  # Estimate time to peak separately for each Monte Carlo draw.
-  sim_ids <- sort(
-    unique(df_reduced$sim)
-  )
-
-  time_to_peak <- vapply(
-    sim_ids,
-    function(sim_id) {
-
-      extract_time_to_peak(
-        df_reduced %>%
-          filter(
-            sim == sim_id
-          ),
+  result <- df_reduced %>%
+    group_by(sim) %>%
+    group_modify(
+      ~ extract_kinetic_times(
+        .x,
         threshold = threshold
       )
-    },
-    numeric(1)
-  )
-
-
-  result <- tibble(
-    sim = sim_ids,
-    virus = virus_name,
-    time_to_peak = time_to_peak
-  )
-
+    ) %>%
+    ungroup() %>%
+    mutate(
+      virus = virus_name,
+      .before = 1
+    )
 
   rm(df_reduced)
   gc()
@@ -320,89 +329,151 @@ calculate_time_to_peak_virus <- function(
 }
 
 
-# ---------------------------------------------------------------------------
-# 4. Calculate time to peak for each virus
-# ---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 4.5 Summarise uncertainty
+# ------------------------------------------------------------------------------
 
-time_to_peak_by_draw <- bind_rows(
+summarise_metric <- function(x) {
 
-  lapply(
-    names(simulation_files),
-    function(virus_name) {
+  x <- x[is.finite(x)]
 
-      calculate_time_to_peak_virus(
-        files = simulation_files[[virus_name]],
-        virus_name = virus_name,
-        threshold = Ct_LOD
+  if (length(x) == 0) {
+    return(
+      tibble(
+        median = NA_real_,
+        low95 = NA_real_,
+        high95 = NA_real_,
+        n_valid = 0,
+        n_unique = 0
       )
-    }
-  )
+    )
+  }
 
+  tibble(
+    median = median(x),
+    low95 = unname(
+      quantile(
+        x,
+        probs = 0.025,
+        type = 8
+      )
+    ),
+    high95 = unname(
+      quantile(
+        x,
+        probs = 0.975,
+        type = 8
+      )
+    ),
+    n_valid = length(x),
+    n_unique = n_distinct(x)
+  )
+}
+
+
+# ==============================================================================
+# 5. Calculate kinetic times for all viruses
+# ==============================================================================
+
+kinetics_by_draw <- map_dfr(
+  names(simulation_files),
+  function(virus_name) {
+    calculate_kinetics_virus(
+      files = simulation_files[[virus_name]],
+      virus_name = virus_name,
+      threshold = Ct_LOD
+    )
+  }
 ) %>%
   mutate(
     virus = factor(
       virus,
-      levels = c(
-        "SARS-CoV-2",
-        "IAV",
-        "IBV",
-        "RSV"
-      )
+      levels = virus_levels
     )
   )
 
 
-# ---------------------------------------------------------------------------
-# 5. Summarize uncertainty
-# ---------------------------------------------------------------------------
+# ==============================================================================
+# 6. Summarise uncertainty across Monte Carlo draws
+# ==============================================================================
 
-time_to_peak_summary <- time_to_peak_by_draw %>%
-  group_by(
-    virus
+kinetics_long <- kinetics_by_draw %>%
+  select(
+    virus,
+    sim,
+    detection_to_peak,
+    peak_to_clearance,
+    detectable_duration
   ) %>%
-  summarise(
-
-    time_to_peak = median(
-      time_to_peak,
-      na.rm = TRUE
+  pivot_longer(
+    cols = c(
+      detection_to_peak,
+      peak_to_clearance,
+      detectable_duration
     ),
-
-    low95 = quantile(
-      time_to_peak,
-      probs = 0.025,
-      na.rm = TRUE,
-      names = FALSE
-    ),
-
-    high95 = quantile(
-      time_to_peak,
-      probs = 0.975,
-      na.rm = TRUE,
-      names = FALSE
-    ),
-
-    n_valid = sum(
-      is.finite(time_to_peak)
-    ),
-
-    .groups = "drop"
+    names_to = "metric",
+    values_to = "value"
   )
 
+kinetics_summary <- kinetics_long %>%
+  group_by(
+    virus,
+    metric
+  ) %>%
+  group_modify(
+    ~ summarise_metric(.x$value)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    metric = recode(
+      metric,
+      "detection_to_peak" = "Detection to peak",
+      "peak_to_clearance" = "Peak to clearance",
+      "detectable_duration" = "Detectable shedding duration"
+    )
+  )
+
+print(kinetics_summary)
+
+
+# ==============================================================================
+# 7. Diagnostic check
+# ==============================================================================
+
+# If n_unique = 1, identical median/low/high values are expected because
+# the Monte Carlo draws contain no variability for that metric.
+
+diagnostic_table <- kinetics_summary %>%
+  select(
+    virus,
+    metric,
+    median,
+    low95,
+    high95,
+    n_valid,
+    n_unique
+  )
 
 print(
-  time_to_peak_summary
+  diagnostic_table,
+  n = Inf
 )
 
 
-# ---------------------------------------------------------------------------
-# 6. Plot comparison
-# ---------------------------------------------------------------------------
+# ==============================================================================
+# 8. Plot: time from viral peak to clearance
+# ==============================================================================
 
-time_to_peak_plot <- ggplot(
-  time_to_peak_summary,
+clearance_summary <- kinetics_summary %>%
+  filter(
+    metric == "Peak to clearance"
+  )
+
+clearance_plot <- ggplot(
+  clearance_summary,
   aes(
     x = virus,
-    y = time_to_peak
+    y = median
   )
 ) +
   geom_errorbar(
@@ -418,34 +489,70 @@ time_to_peak_plot <- ggplot(
   ) +
   labs(
     x = NULL,
-    y = "Time from first detection to viral peak (days)"
+    y = "Time from viral peak to clearance (days)"
   ) +
   theme_classic(
     base_size = 14
   )
 
+clearance_plot
 
-time_to_peak_plot
+
+# ==============================================================================
+# 9. Plot: all kinetic times
+# ==============================================================================
+
+kinetics_plot <- ggplot(
+  kinetics_summary,
+  aes(
+    x = virus,
+    y = median
+  )
+) +
+  geom_errorbar(
+    aes(
+      ymin = low95,
+      ymax = high95
+    ),
+    width = 0.15,
+    linewidth = 0.7
+  ) +
+  geom_point(
+    size = 3
+  ) +
+  facet_wrap(
+    ~ metric,
+    scales = "free_y"
+  ) +
+  labs(
+    x = NULL,
+    y = "Time (days)"
+  ) +
+  theme_classic(
+    base_size = 14
+  )
+
+kinetics_plot
 
 
-# ---------------------------------------------------------------------------
-# 7. Save results
-# ---------------------------------------------------------------------------
+# ==============================================================================
+# 10. Save results
+# ==============================================================================
 
 write.csv(
-  time_to_peak_by_draw,
+  kinetics_by_draw,
   file.path(
     output_dir,
-    "time_to_peak_by_draw.csv"
+    "virus_kinetics_by_draw.csv"
   ),
   row.names = FALSE
 )
 
 write.csv(
-  time_to_peak_summary,
+  kinetics_summary,
   file.path(
     output_dir,
-    "time_to_peak_summary.csv"
+    "virus_kinetics_summary.csv"
   ),
   row.names = FALSE
 )
@@ -453,14 +560,21 @@ write.csv(
 ggsave(
   filename = file.path(
     output_dir,
-    "time_to_peak_comparison.svg"
+    "time_to_clearance_comparison.svg"
   ),
-  plot = time_to_peak_plot,
+  plot = clearance_plot,
   width = 7,
   height = 5
 )
 
-
-message(
-  "Time-to-peak analysis completed."
+ggsave(
+  filename = file.path(
+    output_dir,
+    "virus_kinetic_times_comparison.svg"
+  ),
+  plot = kinetics_plot,
+  width = 10,
+  height = 5
 )
+
+message("Virus comparison analysis completed.")
