@@ -1,11 +1,6 @@
 ################################################################################
 # Compare viral kinetic times across respiratory viruses
 #
-# Estimates and compares:
-#   - time from first detection to viral peak
-#   - time from viral peak to viral clearance
-#   - total detectable shedding duration
-#
 # Uncertainty is propagated across Monte Carlo simulation draws.
 # Kinetic outcomes are computed within each draw before summarising across draws.
 ################################################################################
@@ -29,8 +24,8 @@ library(tidyr)
 
 Ct_LOD <- 40
 
-simulation_dir <- "/home/laura.mulas/Monolix/SH/results"
-output_dir <- "/home/laura.mulas/Monolix/SH/results"
+simulation_dir <- ".../results"
+output_dir <- ".../results"
 
 dir.create(
   output_dir,
@@ -120,7 +115,7 @@ interpolate_crossing <- function(
 # 4.2 Extract kinetic times from one simulated trajectory
 # ------------------------------------------------------------------------------
 
-extract_kinetic_times <- function(
+extract_clearance_time <- function(
     df_trajectory,
     threshold = Ct_LOD) {
 
@@ -138,57 +133,34 @@ extract_kinetic_times <- function(
   if (nrow(df_trajectory) < 3) {
     return(
       tibble(
-        t_detection = NA_real_,
-        t_peak = NA_real_,
-        t_clearance = NA_real_,
-        detection_to_peak = NA_real_,
-        peak_to_clearance = NA_real_,
-        detectable_duration = NA_real_
+        clearance_time = NA_real_
       )
     )
   }
 
-  # Peak viral load corresponds to the minimum Ct.
+  # Viral peak = minimum Ct
   idx_peak <- which.min(df_trajectory$Ct)[1]
   t_peak <- df_trajectory$time[idx_peak]
 
-  # First detection before peak: Ct >= threshold -> Ct < threshold.
-  if (idx_peak > 1) {
-    idx_detection <- which(
-      head(df_trajectory$Ct[seq_len(idx_peak)], -1) >= threshold &
-        tail(df_trajectory$Ct[seq_len(idx_peak)], -1) < threshold
-    )
-  } else {
-    idx_detection <- integer(0)
-  }
-
-  if (length(idx_detection) > 0) {
-    i_det <- tail(idx_detection, 1)
-
-    t_detection <- interpolate_crossing(
-      t1 = df_trajectory$time[i_det],
-      t2 = df_trajectory$time[i_det + 1],
-      ct1 = df_trajectory$Ct[i_det],
-      ct2 = df_trajectory$Ct[i_det + 1],
-      threshold = threshold
-    )
-  } else {
-    t_detection <- NA_real_
-  }
-
-  # Viral clearance after peak: Ct < threshold -> Ct >= threshold.
+  # Search for clearance after the viral peak:
+  # Ct < threshold -> Ct >= threshold
   if (idx_peak < nrow(df_trajectory)) {
+
     post_peak_index <- idx_peak:nrow(df_trajectory)
 
     idx_clearance_local <- which(
       head(df_trajectory$Ct[post_peak_index], -1) < threshold &
         tail(df_trajectory$Ct[post_peak_index], -1) >= threshold
     )
+
   } else {
+
     idx_clearance_local <- integer(0)
+
   }
 
   if (length(idx_clearance_local) > 0) {
+
     i_clear <- idx_peak + idx_clearance_local[1] - 1
 
     t_clearance <- interpolate_crossing(
@@ -198,29 +170,17 @@ extract_kinetic_times <- function(
       ct2 = df_trajectory$Ct[i_clear + 1],
       threshold = threshold
     )
+
+    clearance_time <- t_clearance - t_peak
+
   } else {
-    t_clearance <- NA_real_
+
+    clearance_time <- NA_real_
+
   }
 
   tibble(
-    t_detection = t_detection,
-    t_peak = t_peak,
-    t_clearance = t_clearance,
-    detection_to_peak = ifelse(
-      is.finite(t_detection),
-      t_peak - t_detection,
-      NA_real_
-    ),
-    peak_to_clearance = ifelse(
-      is.finite(t_clearance),
-      t_clearance - t_peak,
-      NA_real_
-    ),
-    detectable_duration = ifelse(
-      is.finite(t_detection) & is.finite(t_clearance),
-      t_clearance - t_detection,
-      NA_real_
-    )
+    clearance_time = clearance_time
   )
 }
 
@@ -277,7 +237,7 @@ reduce_simulation_file <- function(file) {
 # 4.4 Process one virus
 # ------------------------------------------------------------------------------
 
-calculate_kinetics_virus <- function(
+calculate_clearance_virus <- function(
     files,
     virus_name,
     threshold = Ct_LOD) {
@@ -311,7 +271,7 @@ calculate_kinetics_virus <- function(
   result <- df_reduced %>%
     group_by(sim) %>%
     group_modify(
-      ~ extract_kinetic_times(
+      ~ extract_clearance_time(
         .x,
         threshold = threshold
       )
@@ -378,7 +338,7 @@ summarise_metric <- function(x) {
 kinetics_by_draw <- map_dfr(
   names(simulation_files),
   function(virus_name) {
-    calculate_kinetics_virus(
+    calculate_clearance_virus(
       files = simulation_files[[virus_name]],
       virus_name = virus_name,
       threshold = Ct_LOD
@@ -397,77 +357,19 @@ kinetics_by_draw <- map_dfr(
 # 6. Summarise uncertainty across Monte Carlo draws
 # ==============================================================================
 
-kinetics_long <- kinetics_by_draw %>%
-  select(
-    virus,
-    sim,
-    detection_to_peak,
-    peak_to_clearance,
-    detectable_duration
-  ) %>%
-  pivot_longer(
-    cols = c(
-      detection_to_peak,
-      peak_to_clearance,
-      detectable_duration
-    ),
-    names_to = "metric",
-    values_to = "value"
-  )
-
-kinetics_summary <- kinetics_long %>%
-  group_by(
-    virus,
-    metric
-  ) %>%
+clearance_summary <- clearance_by_draw %>%
+  group_by(virus) %>%
   group_modify(
-    ~ summarise_metric(.x$value)
+    ~ summarise_metric(.x$clearance_time)
   ) %>%
-  ungroup() %>%
-  mutate(
-    metric = recode(
-      metric,
-      "detection_to_peak" = "Detection to peak",
-      "peak_to_clearance" = "Peak to clearance",
-      "detectable_duration" = "Detectable shedding duration"
-    )
-  )
+  ungroup()
 
-print(kinetics_summary)
+print(clearance_summary)
 
 
 # ==============================================================================
-# 7. Diagnostic check
+# 7. Plot: time from viral peak to clearance
 # ==============================================================================
-
-# If n_unique = 1, identical median/low/high values are expected because
-# the Monte Carlo draws contain no variability for that metric.
-
-diagnostic_table <- kinetics_summary %>%
-  select(
-    virus,
-    metric,
-    median,
-    low95,
-    high95,
-    n_valid,
-    n_unique
-  )
-
-print(
-  diagnostic_table,
-  n = Inf
-)
-
-
-# ==============================================================================
-# 8. Plot: time from viral peak to clearance
-# ==============================================================================
-
-clearance_summary <- kinetics_summary %>%
-  filter(
-    metric == "Peak to clearance"
-  )
 
 clearance_plot <- ggplot(
   clearance_summary,
@@ -497,62 +399,24 @@ clearance_plot <- ggplot(
 
 clearance_plot
 
-
 # ==============================================================================
-# 9. Plot: all kinetic times
-# ==============================================================================
-
-kinetics_plot <- ggplot(
-  kinetics_summary,
-  aes(
-    x = virus,
-    y = median
-  )
-) +
-  geom_errorbar(
-    aes(
-      ymin = low95,
-      ymax = high95
-    ),
-    width = 0.15,
-    linewidth = 0.7
-  ) +
-  geom_point(
-    size = 3
-  ) +
-  facet_wrap(
-    ~ metric,
-    scales = "free_y"
-  ) +
-  labs(
-    x = NULL,
-    y = "Time (days)"
-  ) +
-  theme_classic(
-    base_size = 14
-  )
-
-kinetics_plot
-
-
-# ==============================================================================
-# 10. Save results
+# 8. Save results
 # ==============================================================================
 
 write.csv(
-  kinetics_by_draw,
+  clearance_by_draw,
   file.path(
     output_dir,
-    "virus_kinetics_by_draw.csv"
+    "virus_clearance_by_draw.csv"
   ),
   row.names = FALSE
 )
 
 write.csv(
-  kinetics_summary,
+  clearance_summary,
   file.path(
     output_dir,
-    "virus_kinetics_summary.csv"
+    "virus_clearance_summary.csv"
   ),
   row.names = FALSE
 )
@@ -567,14 +431,4 @@ ggsave(
   height = 5
 )
 
-ggsave(
-  filename = file.path(
-    output_dir,
-    "virus_kinetic_times_comparison.svg"
-  ),
-  plot = kinetics_plot,
-  width = 10,
-  height = 5
-)
-
-message("Virus comparison analysis completed.")
+message("Virus clearance comparison completed.")
