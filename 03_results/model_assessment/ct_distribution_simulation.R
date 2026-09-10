@@ -1,30 +1,10 @@
 # ============================================================
 # Prepare lightweight RELAB data for Ct distribution plots
 # ============================================================
-#
-# Purpose
-# -------
 # This script is intended to be run on the computing cluster.
 # It combines observed Ct data with simulated viral-kinetic
 # trajectories and exports only the lightweight summaries needed
 # to reproduce the final Ct distribution figure locally.
-#
-# Outputs
-# -------
-#   - RELAB_plot_observed.csv
-#   - RELAB_plot_violin.csv
-#   - RELAB_plot_sim_stats.csv
-#   - RELAB_plot_N.csv
-#
-# Required package
-# ----------------
-#   - dplyr
-#
-# Notes
-# -----
-# The heavy simulation files remain on the cluster. Only observed
-# values, violin-density coordinates, simulated summary statistics,
-# and sample sizes are exported.
 # ============================================================
 
 rm(list = ls())
@@ -38,8 +18,8 @@ set.seed(123)
 # ------------------------------------------------------------
 
 # Adapt these paths if needed.
-data_dir <- "/home/laura.mulas/Monolix/data_monolix"
-results_dir <- "/home/laura.mulas/Monolix/SH/results"
+data_dir <- ".../data"
+results_dir <- ".../results"
 
 # ------------------------------------------------------------
 # 2. Global settings
@@ -94,7 +74,6 @@ prepare_observed_data <- function(data_obs, virus_name) {
 }
 
 # Read one or several simulation files while retaining only trajectories
-# corresponding to observed infection/time combinations.
 load_trajectory_files <- function(files, data_obs) {
   if (length(files) == 0) {
     stop("No simulation trajectory files were found.")
@@ -169,7 +148,6 @@ summarise_simulated_ct <- function(df_sim, virus_name) {
 }
 
 # Create the polygon coordinates used to reconstruct simulated violins.
-# This avoids exporting millions of simulated Ct values.
 make_violin_density <- function(
     df_sim,
     virus_name,
