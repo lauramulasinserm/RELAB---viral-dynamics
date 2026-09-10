@@ -14,12 +14,12 @@ library(MASS)
 library(deSolve)
 
 # Input data and parameter files
-data_csv <- "02_monolix/data/data_for_monolix_SARS_CoV_2.csv"
-popparam_txt <- "03_results_analysis/model_outputs/COVID/populationParameters.txt"
-cov_txt <- "03_results_analysis/model_outputs/COVID/FisherInformation/covarianceEstimatesLin.txt"
+data_csv <- ".../data/data_for_monolix_SARS_CoV_2.csv"
+popparam_txt <- ".../COVID/populationParameters.txt"
+cov_txt <- ".../COVID/FisherInformation/covarianceEstimatesLin.txt"
 
 # Output directory
-outdir <- "03_results_analysis/results/simulations/COVID"
+outdir <- ".../results/simulations/COVID"
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
 # ==================== Load and Prepare Data ====================
