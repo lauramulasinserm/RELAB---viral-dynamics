@@ -22,19 +22,19 @@ library(deSolve)
 # 1. File paths and simulation settings
 # ---------------------------------------------------------------------------
 
-data_csv <- "02_monolix/data/data_for_monolix_IAV.csv"
+data_csv <- ".../data/data_for_monolix_IAV.csv"
 
 popparam_txt <- paste0(
-  "03_results_analysis/model_outputs/IAV/",
+  ".../IAV/",
   "populationParameters.txt"
 )
 
 cov_txt <- paste0(
-  "03_results_analysis/model_outputs/IAV/",
+  ".../IAV/",
   "FisherInformation/covarianceEstimatesLin.txt"
 )
 
-outdir <- "03_results_analysis/results/simulations/IAV"
+outdir <- ".../results/simulations/IAV"
 
 dir.create(
   outdir,
@@ -110,8 +110,7 @@ df_params <- read_delim(
 mu_full <- df_params$value[1:13]
 names(mu_full) <- df_params$parameter[1:13]
 
-# Fixed parameters are not sampled because they are absent from the
-# covariance matrix.
+# Fixed parameters are not sampled 
 fixed_params_names <- c(
   "eta_pop",
   "c_pop",
@@ -161,8 +160,7 @@ sim_est <- MASS::mvrnorm(
   as.data.frame()
 
 
-# Reconstruct the complete parameter set:
-# sampled estimated parameters + fixed constants.
+# Reconstruct the complete parameter set: sampled estimated parameters + fixed constants.
 sim_df <- matrix(
   rep(
     mu_full_log,
