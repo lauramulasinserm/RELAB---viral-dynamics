@@ -10,11 +10,11 @@ library(dplyr)
 library(deSolve)
 
 # Input data and parameter file
-data_csv <- "02_monolix/data/data_for_monolix_IAV.csv"
-popparam_txt <- "03_results_analysis/model_outputs/IAV/populationParameters.txt"
+data_csv <- ".../data/data_for_monolix_IAV.csv"
+popparam_txt <- ".../IAV/populationParameters.txt"
 
 # Output directory
-outdir <- "03_results_analysis/results/simulations_error/IAV"
+outdir <- ".../results/simulations_error/IAV"
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
 # ==================== Load and prepare data ====================
