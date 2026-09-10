@@ -22,19 +22,19 @@ library(deSolve)
 # 1. File paths and simulation settings
 # ---------------------------------------------------------------------------
 
-data_csv <- "02_monolix/data/data_for_monolix_IBV.csv"
+data_csv <- ".../data/data_for_monolix_IBV.csv"
 
 popparam_txt <- paste0(
-  "03_results_analysis/model_outputs/IBV/",
+  ".../IBV/",
   "populationParameters.txt"
 )
 
 cov_txt <- paste0(
-  "03_results_analysis/model_outputs/IBV/",
+  ".../IBV/",
   "FisherInformation/covarianceEstimatesLin.txt"
 )
 
-outdir <- "03_results_analysis/results/simulations/IBV"
+outdir <- ".../results/simulations/IBV"
 
 dir.create(
   outdir,
