@@ -20,7 +20,7 @@ library(broom)
 # -------------------------
 
 data_VE <- read.csv(
-  ".../RELAB_24_26_clean_start_norm_vfinal_25_06.csv",
+  ".../RELAB_24_26_clean_start_with_negative.csv",
   sep = ",",
   stringsAsFactors = FALSE
 )
