@@ -20,7 +20,7 @@ library(broom)
 # -------------------------
 
 data_VE <- read.csv(
-  "C:/Users/laura.mulas/OneDrive - INSERM/Documents/PhD/Projet_RELAB/RELAB_DATA/RELAB_24_26_clean_start_norm_vfinal_25_06.csv",
+  ".../RELAB_24_26_clean_start_norm_vfinal_25_06.csv",
   sep = ",",
   stringsAsFactors = FALSE
 )
@@ -240,7 +240,6 @@ data_VE_cov <- data_VE %>%
   ) %>%
 
   # Keep one record per infection/test episode,
-  # prioritising the COVID-associated row when duplicated.
   arrange(
     ID_infection,
     desc(covid_reported)
