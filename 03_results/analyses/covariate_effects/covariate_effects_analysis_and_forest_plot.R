@@ -4,19 +4,13 @@
 # Purpose
 #   1. Reduce large simulation files in a memory-efficient way
 #   2. Estimate covariate effects on peak Ct and time to viral clearance
-#   3. Save virus-specific summary tables
-#   4. Build the combined forest plot across viruses
+#   3. Build the combined forest plot across viruses
 #
 # Viruses
 #   - SARS-CoV-2
 #   - Influenza A virus (IAV)
 #   - Influenza B virus (IBV)
 #   - Respiratory syncytial virus (RSV)
-#
-# Notes for GitHub
-#   - Edit only the paths in SECTION 1.
-#   - Raw simulation files are not included in the repository.
-#   - Large *.rds files should be excluded with .gitignore.
 #################################################################################################
 
 rm(list = ls())
@@ -49,28 +43,20 @@ Ct_LOD <- 40
 
 # Directory in which summary CSV files are written.
 # Change this path for your own machine/server.
-results_dir <- "/home/laura.mulas/Monolix/R_simulation/results"
+results_dir <- ".../results"
 
 # Final figure path.
-# Change this path for your own machine.
 figure_file <- file.path(results_dir, "RELAB_cov_effects_FINAL.svg")
 
 if (!dir.exists(results_dir)) {
   dir.create(results_dir, recursive = TRUE)
 }
 
-# Simulation files are defined separately in each virus section below.
-# Keeping them explicit makes it easy to see which files are used in each analysis.
-
-# Model-derived kinetic outcomes
-# Generic Monte Carlo propagation for covariate effects
-###########################################################################################################################
 
 #################################################################################################
 # MEMORY-EFFICIENT ANALYSIS OF COVARIATE EFFECTS
 # ALL RESPIRATORY VIRUSES
 #################################################################################################
-
 
 # ================================================================================================
 # 1. Extract peak and clearance from one median Ct trajectory
@@ -170,14 +156,6 @@ get_peak_and_clearance <- function(df, threshold = Ct_LOD) {
 #
 # IMPORTANT:
 # Only the selected covariate is retained.
-#
-# Therefore, for age:
-# sim × age × time
-#
-# For season:
-# sim × season × time
-#
-# etc.
 # ================================================================================================
 
 read_and_reduce_simulations <- function(
@@ -207,10 +185,6 @@ read_and_reduce_simulations <- function(
       sep = ""
     )
     
-    
-    # -------------------------------------------------------------------------
-    # Read ONLY one large file
-    # -------------------------------------------------------------------------
     
     tmp <- readRDS(files[i])
     
@@ -598,13 +572,13 @@ compute_covariate_effects_reduced <- function(
 
 sim_files_cov <- c(
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_covid_1_250_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_covid_1_250_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_covid_251_500_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_covid_251_500_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_covid_501_750_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_covid_501_750_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_covid_751_1000_IC_traj_vfinal.rds"
+  ".../results/simulation_TV_covid_751_1000_IC_traj_vfinal.rds"
 )
 
 
@@ -752,13 +726,13 @@ write.csv(
 
 sim_files_A <- c(
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_flu_A_1_250_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_flu_A_1_250_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_flu_A_251_500_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_flu_A_251_500_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_flu_A_501_750_IC_traj_vfinal.rds",
+  ".../results/simulation_TV_flu_A_501_750_IC_traj_vfinal.rds",
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_flu_A_751_1000_IC_traj_vfinal.rds"
+  ".../results/simulation_TV_flu_A_751_1000_IC_traj_vfinal.rds"
 )
 
 
@@ -906,7 +880,7 @@ write.csv(
 
 sim_files_B <- c(
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_flu_B_1000_traj_IC_vfinal.rds"
+  ".../results/simulation_TV_flu_B_1000_traj_IC_vfinal.rds"
 )
 
 
@@ -1014,7 +988,7 @@ write.csv(
 
 sim_files_RSV <- c(
   
-  "/home/laura.mulas/Monolix/SH/results/simulation_TV_VRS_1000_IC_traj_vfinal.rds"
+  ".../results/simulation_TV_VRS_1000_IC_traj_vfinal.rds"
 )
 
 
@@ -1332,8 +1306,6 @@ df_effects <- df_effects %>%
 # ================================================================================================
 
 # One label for each category.
-# We take the first reference label, because the reference should normally
-# be identical across viruses for a given comparison.
 
 label_df <- df_effects %>%
   group_by(
@@ -1365,14 +1337,6 @@ label_df <- df_effects %>%
 # ================================================================================================
 # 7) Y POSITIONS
 # ================================================================================================
-
-# Age now has THREE comparisons:
-#
-# <5      vs 18-65
-# 5-18    vs 18-65
-# >65     vs 18-65
-#
-# We leave some vertical space between them.
 
 y_map <- bind_rows(
   
@@ -1547,9 +1511,6 @@ if (any(is.na(effects_plot$y_plot))) {
 # ================================================================================================
 # 10) CAP VALUES AT GRAPH LIMITS
 # ================================================================================================
-
-# Ct axis: -2 to +2
-# Clearance axis: -12 to +12
 
 effects_plot <- effects_plot %>%
   mutate(
@@ -1890,7 +1851,6 @@ make_ct_plot <- function(group_name) {
     ) +
     
     # Reversed Ct axis:
-    # positive delta Ct = lower viral load -> shown on LEFT
     scale_x_reverse(
       
       name = NULL,
@@ -1989,7 +1949,7 @@ make_ct_plot <- function(group_name) {
       ) +
       
       
-      # ------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
     # Left arrow = lower viral load
     # ------------------------------------------------------------------------------------------
     
@@ -2055,7 +2015,7 @@ make_ct_plot <- function(group_name) {
       ) +
       
       
-      # ------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
     # Right arrow = higher viral load
     # ------------------------------------------------------------------------------------------
     
@@ -2186,12 +2146,6 @@ make_clear_plot <- function(group_name) {
       drop = FALSE
     ) +
     
-    # Same orientation as your previous figure:
-    # negative = shorter -> LEFT
-    # positive = longer -> RIGHT
-    #
-    # limits c(12, -12) reverses the physical axis,
-    # exactly as in your previous code.
     scale_x_continuous(
       
       name = NULL,
@@ -2290,7 +2244,7 @@ make_clear_plot <- function(group_name) {
       ) +
       
       
-      # ------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
     # Left arrow = shorter clearance
     # ------------------------------------------------------------------------------------------
     
@@ -2356,7 +2310,7 @@ make_clear_plot <- function(group_name) {
       ) +
       
       
-      # ------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
     # Right arrow = longer clearance
     # ------------------------------------------------------------------------------------------
     
@@ -2427,7 +2381,7 @@ make_clear_plot <- function(group_name) {
 }
 
 # ================================================================================================
-# 16bis) LÉGENDE UNIQUE (4 virus)
+# 16bis) Only one legend (4 virus)
 # ================================================================================================
 
 make_legend_grob <- function() {
@@ -2461,21 +2415,6 @@ legend_grob <- make_legend_grob()
 
 # ================================================================================================
 # 17) BUILD A COMPLETE BLOCK FOR ONE COVARIATE
-#
-# Design:
-#
-#             ┌────────────────────────────────────────────────────┐
-#             │                        AGE                         │
-#             └────────────────────────────────────────────────────┘
-#
-# labels          Peak Ct column            Clearance column
-#
-#
-# IMPORTANT:
-# "ABB"
-# "CDE"
-#
-# means that plot B (the grey strip) SPANS columns 2 AND 3.
 # ================================================================================================
 make_vertical_separator <- function() {
   
