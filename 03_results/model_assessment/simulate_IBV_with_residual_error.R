@@ -10,11 +10,11 @@ library(dplyr)
 library(deSolve)
 
 # Input data and parameter file
-data_csv <- "02_monolix/data/data_for_monolix_IBV.csv"
-popparam_txt <- "03_results_analysis/model_outputs/IBV/populationParameters.txt"
+data_csv <- ".../data/data_for_monolix_IBV.csv"
+popparam_txt <- ".../IBV/populationParameters.txt"
 
 # Output directory
-outdir <- "03_results_analysis/results/simulations_error/IBV"
+outdir <- ".../results/simulations_error/IBV"
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
 # ==================== Load and prepare data ====================
@@ -122,10 +122,6 @@ for (i in seq_len(n_sim)) {
     # log(tinc) = log(tinc_pop): no inter-individual variability
     tinc_i  <- tinc_pop
     
-    # log(delta) = log(delta_pop)
-    #            + beta_delta_sexe_Male * [sexe = Male]
-    #            + beta_delta_statut_vaccin_1 * [statut_vaccin = 1]
-    #            + eta_delta
     log_delta_i <- log(delta_pop) +
       beta_delta_sexe_Male       * (df_sim$sexe[j]   == "Male") +
       beta_delta_statut_vaccin_1 * (df_sim$vaccin[j] == "1") +
